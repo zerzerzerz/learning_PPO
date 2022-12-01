@@ -9,11 +9,11 @@ import pandas as pd
 
 def get_args():
     parser = ArgumentParser()
-    # parser.add_argument("--env_name", type=str, default="BipedalWalker-v3")
-    parser.add_argument("--env_name", type=str, default="LunarLander-v2")
+    parser.add_argument("--env_name", type=str, default="BipedalWalker-v3")
+    # parser.add_argument("--env_name", type=str, default="LunarLander-v2")
     parser.add_argument("--hidden_dim", type=int, default=64)
     parser.add_argument("--num_layers", type=int, default=1)
-    parser.add_argument("--episode_len", type=int, default=300)
+    parser.add_argument("--episode_len", type=int, default=1500)
     parser.add_argument("--lr_actor", type=float, default=3e-4)
     parser.add_argument("--lr_critic", type=float, default=1e-3)
     parser.add_argument("--num_optim", type=int, default=100)
@@ -21,8 +21,8 @@ def get_args():
     parser.add_argument("--log_episode_gap", type=int, default=100)
     parser.add_argument("--gamma", type=float, default=0.99)
     parser.add_argument("--eps", type=float, default=0.2)
-    parser.add_argument("--device", type=str, default="cuda:2")
-    parser.add_argument("--output_dir", type=str, default="result-debug")
+    parser.add_argument("--device", type=str, default="cuda:1")
+    parser.add_argument("--output_dir", type=str, default="result-debug-continuous")
     parser.add_argument("--weight_advantages", type=float, default=1.0)
     parser.add_argument("--weight_value_mse", type=float, default=0.5)
     parser.add_argument("--weight_entropy", type=float, default=0.01)
@@ -66,10 +66,11 @@ def main(args):
         # losses_value_mse.append(loss_value_mse)
         # losses_entropy.append(loss_entropy)
 
-        line['loss'] = loss
-        line['loss_advantage'] = loss_advantage
-        line['loss_value_mse'] = loss_value_mse
-        line['loss_entropy'] = loss_entropy
+        line['reward'] = round(episode_reward,4)
+        line['loss'] = round(loss,4)
+        line['loss_advantage'] = round(loss_advantage,4)
+        line['loss_value_mse'] = round(loss_value_mse,4)
+        line['loss_entropy'] = round(loss_entropy,4)
         df = pd.concat([df,pd.DataFrame([line])])
         df.to_csv(csv_path,index=None)
 
