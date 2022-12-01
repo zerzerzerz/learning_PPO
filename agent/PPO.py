@@ -52,11 +52,37 @@ class PPO():
     def to_cpu(self):
         self.policy_old.cpu()
         self.policy.cpu()
+    
+
+    def test_an_episode(self,max_episode_len):
+        '''
+        use the current policy to run an episode (test mode)
+        return the episode reward
+        '''
+        with torch.no_grad():
+            rewards = 0
+            self.policy.eval()
+            state, info = self.env.reset()
+            for timestep in range(1,max_episode_len+1):
+                state = torch.from_numpy(state).to(device=self.device, dtype=torch.float32)
+                state = rearrange(state,'d -> 1 d')
+                state_value, action, action_logprob, entropy = self.policy(state)
+                if self.action_type == "continuous":
+                    action = rearrange(action,'1 d -> d').detach().cpu().numpy()
+                elif self.action_type == "discrete":
+                    action = action.item()
+                else:
+                    raise NotImplementedError(f'action_type = {self.action_type} is not implemented')
+                state, reward, terminate, truncated, info = self.env.step(action)
+                rewards += reward
+                if terminate or truncated:
+                    break
+        return rewards
+
 
 
     def collect_episode(self,episode_len):
         with torch.no_grad():
-            episode_reward = 0
             # 1d np
             state, info = self.env.reset()
             for timestep in range(episode_len):
@@ -79,11 +105,8 @@ class PPO():
                 terminate = terminate or truncated
                 self.buffer.add(state,reward,terminate,action_logprob,action)
                 state = state_next
-                episode_reward += reward
                 if terminate:
-                    # print(f'{timestep+1}/{episode_len}')
-                    break
-            return episode_reward
+                    state, info = self.env.reset()
     
 
     def update(self):
@@ -107,6 +130,7 @@ class PPO():
 
         rewards_old = (rewards_old - rewards_old.mean()) / (rewards_old.std() + 1e-6)
 
+        self.policy.train()
         for epoch in range(self.num_optim):
             state_values, logprobs, entropy = self.policy.evaluate(states_old,actions_old)
             state_values = rearrange(state_values, 'b 1 -> b')

@@ -9,11 +9,11 @@ import pandas as pd
 
 def get_args():
     parser = ArgumentParser()
-    parser.add_argument("--env_name", type=str, default="BipedalWalker-v3")
-    # parser.add_argument("--env_name", type=str, default="LunarLander-v2")
+    # parser.add_argument("--env_name", type=str, default="BipedalWalker-v3")
+    parser.add_argument("--env_name", type=str, default="LunarLander-v2")
     parser.add_argument("--hidden_dim", type=int, default=64)
     parser.add_argument("--num_layers", type=int, default=1)
-    parser.add_argument("--episode_len", type=int, default=1500)
+    parser.add_argument("--episode_len", type=int, default=256)
     parser.add_argument("--lr_actor", type=float, default=3e-4)
     parser.add_argument("--lr_critic", type=float, default=1e-3)
     parser.add_argument("--num_optim", type=int, default=100)
@@ -21,8 +21,8 @@ def get_args():
     parser.add_argument("--log_episode_gap", type=int, default=100)
     parser.add_argument("--gamma", type=float, default=0.99)
     parser.add_argument("--eps", type=float, default=0.2)
-    parser.add_argument("--device", type=str, default="cuda:1")
-    parser.add_argument("--output_dir", type=str, default="result-debug-continuous")
+    parser.add_argument("--device", type=str, default="cuda:0")
+    parser.add_argument("--output_dir", type=str, default="result-debug-discrete")
     parser.add_argument("--weight_advantages", type=float, default=1.0)
     parser.add_argument("--weight_value_mse", type=float, default=0.5)
     parser.add_argument("--weight_entropy", type=float, default=0.01)
@@ -56,9 +56,10 @@ def main(args):
 
     ppo = PPO(args.env_name,args.hidden_dim,args.num_layers,args.lr_actor,args.lr_critic,args.num_optim,args.gamma,args.eps,args.device,args.weight_advantages,args.weight_value_mse,args.weight_entropy)
     for e in tqdm(range(1,1+args.num_episode)):
-        line = {"episode":e}
-        episode_reward = ppo.collect_episode(args.episode_len)
+        
+        ppo.collect_episode(args.episode_len)
         loss, loss_advantage, loss_value_mse, loss_entropy = ppo.update()
+        episode_reward = ppo.test_an_episode(args.episode_len)
 
         episode_rewards.append(episode_reward)
         # episode_losses.append(loss)
@@ -66,6 +67,7 @@ def main(args):
         # losses_value_mse.append(loss_value_mse)
         # losses_entropy.append(loss_entropy)
 
+        line = {"episode":e}
         line['reward'] = round(episode_reward,4)
         line['loss'] = round(loss,4)
         line['loss_advantage'] = round(loss_advantage,4)
@@ -75,6 +77,7 @@ def main(args):
         df.to_csv(csv_path,index=None)
 
         if e % args.log_episode_gap == 0:
+            pass
             draw(episode_rewards,fig_dir,e,'reward')
             # draw(episode_losses,fig_dir,e,'loss')
             # draw(losses_advantage,fig_dir,e,'advantage')
