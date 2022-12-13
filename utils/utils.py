@@ -8,6 +8,13 @@ import random
 import numpy as np
 import time
 from matplotlib import pyplot as plt
+import pandas as pd
+
+def get_datetime():
+    t = time.localtime()
+    t = time.strftime("%Y-%m-%d-%H-%M-%S", t)
+    return t
+
 def mkdir(d):
     if isdir(d):
         shutil.rmtree(d)
@@ -46,13 +53,21 @@ class Logger():
                 print(content)
 
 
-def draw(rewards,fig_dir,episode,label,figsize=(10,5)):
-    plt.figure(figsize=figsize)
-    plt.plot(rewards,label=f'episode {label}')
-    plt.grid(which='both')
-    plt.title(f"Episode = {episode}, episode {label}")
-    plt.legend()
-    plt.xlabel('episode')
-    plt.ylabel(f'episode {label}')
-    plt.savefig(join(fig_dir,f'{label}_episode_{episode}.png'))
-    plt.close()
+def save_log(df:pd.DataFrame, new_line:dict, epoch, interval, csv_path):
+    n = new_line.copy()
+    n['epoch'] = epoch
+    df = pd.concat([df, pd.DataFrame([n])])
+    df = df.reset_index()
+    if (epoch+1) % interval == 0:
+        df.to(csv_path, index=None)
+    return df
+
+
+def save_plot(df:pd.DataFrame, epoch, interval, fig_dir, *keys):
+    if (epoch+1) % interval == 0:
+        for k in keys:
+            plt.plot(df[k], label=k)
+            plt.grid(which='both')
+            plt.legend()
+            plt.savefig(join(fig_dir, f'{k}-epoch={epoch}.png'))
+        

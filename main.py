@@ -3,7 +3,7 @@ import gym
 from argparse import ArgumentParser
 from tqdm import tqdm
 from agent.PPO import PPO
-from utils.utils import mkdir, save_json, draw, setup_seed
+from utils.utils import mkdir, save_json, setup_seed, get_datetime, save_log, save_plot
 from os.path import join
 import pandas as pd
 
@@ -21,8 +21,8 @@ def get_args():
     parser.add_argument("--log_episode_gap", type=int, default=100)
     parser.add_argument("--gamma", type=float, default=0.99)
     parser.add_argument("--eps", type=float, default=0.2)
-    parser.add_argument("--device", type=str, default="cuda:0")
-    parser.add_argument("--output_dir", type=str, default="result-debug-discrete")
+    parser.add_argument("--device", type=str, default="cuda:1")
+    parser.add_argument("--output_dir", type=str, default="result-debug-discrete" + "-" + get_datetime())
     parser.add_argument("--weight_advantages", type=float, default=1.0)
     parser.add_argument("--weight_value_mse", type=float, default=0.5)
     parser.add_argument("--weight_entropy", type=float, default=0.01)
@@ -45,44 +45,23 @@ def main(args):
 
     save_json(vars(args), join(args.output_dir, 'args.json'))
 
-    csv_path = join(args.output_dir, 'log.csv')
-    df = pd.DataFrame()
-
-    episode_rewards = []
-    episode_losses = []
-    losses_advantage = []
-    losses_value_mse = []
-    losses_entropy = []
+    csv_path_train = join(args.output_dir, 'log_train.csv')
+    csv_path_test = join(args.output_dir, 'log_test.csv')
+    df_train = pd.DataFrame()
+    df_test = pd.DataFrame()
 
     ppo = PPO(args.env_name,args.hidden_dim,args.num_layers,args.lr_actor,args.lr_critic,args.num_optim,args.gamma,args.eps,args.device,args.weight_advantages,args.weight_value_mse,args.weight_entropy)
     for e in tqdm(range(1,1+args.num_episode)):
-        
         ppo.collect_episode(args.episode_len)
-        loss, loss_advantage, loss_value_mse, loss_entropy = ppo.update()
-        episode_reward = ppo.test_an_episode(args.episode_len)
+        line_train = ppo.update()
+        line_test = ppo.test_an_episode(args.episode_len)
 
-        episode_rewards.append(episode_reward)
-        # episode_losses.append(loss)
-        # losses_advantage.append(loss_advantage)
-        # losses_value_mse.append(loss_value_mse)
-        # losses_entropy.append(loss_entropy)
+        df_train = save_log(df_train, line_train, e, args.log_episode_gap, csv_path_train)
+        df_test = save_log(df_test, line_test, e, args.log_episode_gap, csv_path_test)
+        save_plot(df_train, e, args.log_episode_gap, fig_dir, *line_train.keys())
+        save_plot(df_test, e, args.log_episode_gap, fig_dir, *line_test.keys())
+        
 
-        line = {"episode":e}
-        line['reward'] = round(episode_reward,4)
-        line['loss'] = round(loss,4)
-        line['loss_advantage'] = round(loss_advantage,4)
-        line['loss_value_mse'] = round(loss_value_mse,4)
-        line['loss_entropy'] = round(loss_entropy,4)
-        df = pd.concat([df,pd.DataFrame([line])])
-        df.to_csv(csv_path,index=None)
-
-        if e % args.log_episode_gap == 0:
-            pass
-            draw(episode_rewards,fig_dir,e,'reward')
-            # draw(episode_losses,fig_dir,e,'loss')
-            # draw(losses_advantage,fig_dir,e,'advantage')
-            # draw(losses_value_mse,fig_dir,e,'value_mse')
-            # draw(losses_entropy,fig_dir,e,'entropy')
 
 
 

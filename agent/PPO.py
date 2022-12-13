@@ -77,7 +77,9 @@ class PPO():
                 rewards += reward
                 if terminate or truncated:
                     break
-        return rewards
+        return {
+            "reward": rewards,
+        }
 
 
 
@@ -160,10 +162,20 @@ class PPO():
         self.buffer.clear()
         self.policy_old.load_state_dict(self.policy.state_dict())
 
-        return episode_loss / self.num_optim, \
-            sum_loss_advantage / self.num_optim, \
-            sum_loss_value_mse / self.num_optim, \
-            sum_loss_entropy / self.num_optim
+        res = {
+            "loss_value": sum_loss_value_mse,
+            "loss_action": sum_loss_advantage,
+            "loss_entropy": sum_loss_entropy,
+        }
+        for k in res.keys():
+            res[k] /= self.num_optim
+        
+        return res
+
+        # return episode_loss / self.num_optim, \
+        #     sum_loss_advantage / self.num_optim, \
+        #     sum_loss_value_mse / self.num_optim, \
+        #     sum_loss_entropy / self.num_optim
             
 
 
